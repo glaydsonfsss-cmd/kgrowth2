@@ -1,10 +1,13 @@
+// app/auth/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "../_lib/supabaseClient";
 
-export default function AuthPage() {
+export const dynamic = "force-dynamic";
+
+function AuthInner() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/projects";
@@ -28,86 +31,111 @@ export default function AuthPage() {
   }, [router, next]);
 
   async function signUp() {
-    setStatus("Signing up...");
-    const supabase = supabaseBrowser();
+    try {
+      setStatus("Signing up...");
+      const supabase = supabaseBrowser();
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // em PRODUÇÃO (Vercel) isso vira seu domínio do app automaticamente
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
+      });
 
-    if (error) return setStatus(`Error: ${error.message}`);
-    setStatus("Check your email to confirm ✅ (if confirmation is enabled).");
+      if (error) {
+        setStatus(error.message);
+        return;
+      }
+      setStatus("Check your email to confirm your account.");
+    } catch (e: any) {
+      setStatus(e?.message ?? "Unknown error");
+    }
   }
 
   async function signIn() {
-    setStatus("Signing in...");
-    const supabase = supabaseBrowser();
+    try {
+      setStatus("Signing in...");
+      const supabase = supabaseBrowser();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) return setStatus(`Error: ${error.message}`);
-    setStatus("Logged in ✅");
-    router.replace(next);
-  }
-
-  async function signOut() {
-    const supabase = supabaseBrowser();
-    await supabase.auth.signOut();
-    setStatus("Logged out");
+      if (error) {
+        setStatus(error.message);
+        return;
+      }
+      setStatus("Signed in!");
+      router.replace(next);
+    } catch (e: any) {
+      setStatus(e?.message ?? "Unknown error");
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-semibold">Auth</h1>
-      <p className="text-slate-600">Login (Supabase)</p>
-
-      <div className="rounded-2xl border bg-white p-6 space-y-4 max-w-2xl">
-        <div className="rounded-xl border bg-slate-50 p-4 text-sm">
-          <b>Status:</b> {status || "—"}
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Email</label>
-            <input
-              className="mt-2 w-full rounded-xl border px-4 py-3"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@email.com"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Password</label>
-            <input
-              className="mt-2 w-full rounded-xl border px-4 py-3"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="min 6 chars"
-              type="password"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button onClick={signUp} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-            Sign up
-          </button>
-          <button onClick={signIn} className="rounded-lg border px-4 py-2 text-sm font-semibold">
-            Sign in
-          </button>
-          <button onClick={signOut} className="rounded-lg border px-4 py-2 text-sm font-semibold text-rose-700">
-            Sign out
-          </button>
+    <div className="mx-auto max-w-md space-y-4 rounded-2xl border bg-white p-6">
+      <div>
+        <div className="text-xl font-semibold text-slate-900">Login</div>
+        <div className="mt-1 text-sm text-slate-600">
+          Sign in to sync your data across devices.
         </div>
       </div>
+
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-slate-700">Email</label>
+        <input
+          className="w-full rounded-xl border px-3 py-3 text-sm"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@email.com"
+          autoComplete="email"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-slate-700">Password</label>
+        <input
+          className="w-full rounded-xl border px-3 py-3 text-sm"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          autoComplete="current-password"
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={signIn}
+          className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Sign in
+        </button>
+        <button
+          onClick={signUp}
+          className="flex-1 rounded-xl border bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Sign up
+        </button>
+      </div>
+
+      {status ? (
+        <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-700">
+          {status}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+export default function AuthPage() {
+  // ✅ Next exige Suspense quando usa useSearchParams()
+  return (
+    <Suspense fallback={<div className="text-sm text-slate-600">Loading...</div>}>
+      <AuthInner />
+    </Suspense>
   );
 }

@@ -4,15 +4,15 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const origin = url.origin;
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const next = searchParams.get("next") || "/projects";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
-  // ✅ Next 16: cookies() pode ser async dependendo do runtime/typing
+  // ✅ Next 16: cookies() pode ser async dependendo do runtime
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -32,10 +32,7 @@ export async function GET(request: Request) {
     }
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    return NextResponse.redirect(`${origin}/auth?error=${encodeURIComponent(error.message)}`);
-  }
+  await supabase.auth.exchangeCodeForSession(code);
 
-  return NextResponse.redirect(`${origin}/projects`);
+  return NextResponse.redirect(`${origin}${next}`);
 }

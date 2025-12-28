@@ -1,97 +1,115 @@
-// app/login/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { supabase } from "../_lib/supabaseClient";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabaseBrowser } from "../_lib/supabaseClient";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") || "/projects";
+
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<string>("");
 
   useEffect(() => {
-    // Se já estiver logado, mostra um hint simples (sem redirect automático)
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.email) {
-        setStatus("sent");
-      }
-    });
-  }, []);
+    const supabase = supabaseBrowser();
 
-  async function sendMagicLink() {
-    const e = email.trim();
-    if (!e) return;
-
-    setStatus("sending");
-    setErrorMsg("");
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: e,
-      options: {
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
-      },
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace(next);
     });
 
-    if (error) {
-      setStatus("error");
-      setErrorMsg(error.message);
-      return;
-    }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace(next);
+    });
 
-    setStatus("sent");
+    return () => {
+      sub.subscription.unsubscribe();
+    };
+  }, [router, next]);
+
+  async function signIn() {
+    setStatus("Signing in...");
+    const supabase = supabaseBrowser();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return setStatus(`Error: ${error.message}`);
+    setStatus("Logged in ✅");
+  }
+
+  async function signUp() {
+    setStatus("Creating account...");
+    const supabase = supabaseBrowser();
+
+    // ✅ Aqui é o ponto crítico pra funcionar fora do localhost no Vercel:
+    const redirectTo = `${window.location.origin}/auth/callback`;
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (error) return setStatus(`Error: ${error.message}`);
+    setStatus("Check your email to confirm ✅");
+  }
+
+  async function signOut() {
+    const supabase = supabaseBrowser();
+    await supabase.auth.signOut();
+    setStatus("Signed out");
   }
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-900">Login</h1>
-        <p className="text-slate-600">
-          Enter your email and we’ll send you a magic link.
-        </p>
-      </header>
+      <div className="rounded-2xl border bg-white p-6">
+        <div className="text-sm font-semibold text-slate-900">Login</div>
+        <div className="mt-2 text-sm text-slate-600">{status || "—"}</div>
 
-      <section className="rounded-2xl border bg-white p-6 space-y-4 max-w-xl">
-        <div>
-          <label className="block text-xs font-medium text-slate-700">Email</label>
-          <input
-            className="mt-2 w-full rounded-xl border px-4 py-3 text-sm"
-            placeholder="you@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") sendMagicLink();
-            }}
-          />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Email</label>
+            <input
+              className="mt-2 w-full rounded-xl border px-4 py-3 text-sm"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@email.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Password</label>
+            <input
+              className="mt-2 w-full rounded-xl border px-4 py-3 text-sm"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="min 6 chars"
+              type="password"
+            />
+          </div>
         </div>
 
-        <button
-          onClick={sendMagicLink}
-          disabled={status === "sending"}
-          className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {status === "sending" ? "Sending..." : "Send magic link"}
-        </button>
-
-        {status === "sent" && (
-          <div className="rounded-xl border bg-slate-50 p-3 text-sm text-slate-700">
-            If the email exists, you’ll receive a magic link shortly. Open it on the device you want
-            to use (mobile or desktop).
-          </div>
-        )}
-
-        {status === "error" && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-            {errorMsg || "Something went wrong."}
-          </div>
-        )}
-
-        <div className="text-sm text-slate-600">
-          <Link href="/" className="underline">
-            Back to app
-          </Link>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={signUp}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Sign up
+          </button>
+          <button
+            onClick={signIn}
+            className="rounded-lg border px-4 py-2 text-sm font-semibold"
+          >
+            Sign in
+          </button>
+          <button
+            onClick={signOut}
+            className="rounded-lg border px-4 py-2 text-sm font-semibold text-rose-700"
+          >
+            Sign out
+          </button>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

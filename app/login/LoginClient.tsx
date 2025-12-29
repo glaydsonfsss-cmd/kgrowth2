@@ -1,0 +1,108 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabaseBrowser } from "../_lib/supabaseClient";
+
+export default function LoginClient() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") || "/projects";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<string>("");
+
+  useEffect(() => {
+    const supabase = supabaseBrowser();
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace(next);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace(next);
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, [router, next]);
+
+  async function signIn() {
+    setStatus("Signing in...");
+    const supabase = supabaseBrowser();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return setStatus(`Error: ${error.message}`);
+    setStatus("Logged in ✅");
+  }
+
+  async function signUp() {
+    setStatus("Creating account...");
+    const supabase = supabaseBrowser();
+
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (error) return setStatus(`Error: ${error.message}`);
+    setStatus("Check your email to confirm ✅");
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border bg-white p-6">
+        <div className="text-sm font-semibold text-slate-900">Login</div>
+        <div className="mt-2 text-sm text-slate-600">{status || "—"}</div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Email</label>
+            <input
+              className="mt-2 w-full rounded-xl border px-4 py-3 text-sm"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@email.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Password</label>
+            <input
+              type="password"
+              className="mt-2 w-full rounded-xl border px-4 py-3 text-sm"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={signIn}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Sign in
+          </button>
+
+          <button
+            onClick={signUp}
+            className="rounded-xl border px-4 py-2 text-sm font-semibold"
+          >
+            Sign up
+          </button>
+
+          <button
+            onClick={() => router.push("/auth")}
+            className="rounded-xl border px-4 py-2 text-sm font-semibold"
+          >
+            Go to /auth
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

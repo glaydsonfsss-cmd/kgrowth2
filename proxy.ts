@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
 
   const supabase = createServerClient(
@@ -22,29 +22,33 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  const { data } = await supabase.auth.getUser();
-  const user = data?.user;
+  // ✅ usa SESSION (mais estável no guard)
+  const { data } = await supabase.auth.getSession();
+  const hasSession = !!data.session;
 
   const path = req.nextUrl.pathname;
 
-  const isAuthPage = path.startsWith("/auth");
+  const isAuthPage = path.startsWith("/auth") || path.startsWith("/login");
+
   const isPublic =
     path.startsWith("/_next") ||
     path.startsWith("/favicon") ||
     path.startsWith("/api");
 
-  if (isPublic) return res;
+  const isCallback = path.startsWith("/auth/callback");
 
-  // NOT logged in -> always force /auth (except /auth itself)
-  if (!user && !isAuthPage) {
+  if (isPublic || isCallback) return res;
+
+  // ❌ não logado → força auth
+  if (!hasSession && !isAuthPage) {
     const url = req.nextUrl.clone();
     url.pathname = "/auth";
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 
-  // logged in -> block /auth
-  if (user && isAuthPage) {
+  // ✅ logado → bloqueia auth
+  if (hasSession && isAuthPage) {
     const url = req.nextUrl.clone();
     url.pathname = "/projects";
     return NextResponse.redirect(url);

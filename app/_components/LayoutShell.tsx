@@ -1,3 +1,4 @@
+// app/_components/LayoutShell.tsx
 "use client";
 
 import Link from "next/link";
@@ -55,7 +56,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   }, [pathname]);
 
   return (
-    <div className="bg-slate-50 text-slate-900 min-h-dvh">
+    <div className="min-h-dvh w-full overflow-x-hidden">
       {/* MOBILE TOP BAR */}
       <header className="md:hidden sticky top-0 z-40 border-b bg-white">
         <div className="flex items-center justify-between px-4 py-3">
@@ -74,14 +75,12 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
       {/* MOBILE DRAWER */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50">
-          {/* backdrop */}
           <button
             aria-label="Close menu"
             className="absolute inset-0 bg-black/30"
             onClick={() => setMobileOpen(false)}
           />
-          {/* panel */}
-          <aside className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-xl border-r">
+          <aside className="absolute left-0 top-0 h-full w-[min(85vw,20rem)] bg-white shadow-xl border-r">
             <div className="p-4 border-b">
               <div className="text-lg font-semibold">K Growth OS</div>
               <div className="mt-1 text-sm text-slate-600">
@@ -104,9 +103,14 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         </div>
       )}
 
+      {/* MOBILE CONTENT */}
+      <div className="md:hidden p-4">
+        <div className="mx-auto w-full max-w-6xl min-w-0">{children}</div>
+      </div>
+
       {/* DESKTOP LAYOUT */}
-      <div className="md:fixed md:inset-0 md:flex">
-        <aside className="hidden md:block w-72 shrink-0 border-r bg-white">
+      <div className="hidden md:fixed md:inset-0 md:flex md:w-full">
+        <aside className="w-72 shrink-0 border-r bg-white">
           <div className="p-6">
             <div className="text-xl font-semibold">K Growth OS</div>
             <div className="mt-1 text-sm text-slate-600">
@@ -119,8 +123,8 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
           </div>
         </aside>
 
-        <main className="md:flex-1 md:overflow-y-auto p-4 md:p-8">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
+        <main className="flex-1 min-w-0 overflow-y-auto p-8">
+          <div className="mx-auto w-full max-w-6xl min-w-0">{children}</div>
         </main>
       </div>
     </div>

@@ -24,3 +24,41 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ---- Mobile overflow guard (global) ---- */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* mídia nunca estoura a tela */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* textos longos/URLs não estouram a tela */
+* {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* code blocks não estouram */
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+code {
+  word-break: break-word;
+}
+
+/* tabelas: rolam dentro delas (não quebram a página) */
+table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}

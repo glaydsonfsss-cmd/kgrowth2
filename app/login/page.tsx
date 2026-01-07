@@ -1,5 +1,4 @@
-export const dynamic = "force-dynamic";
-
+// app/login/page.tsx
 import { Suspense } from "react";
 import LoginClient from "./LoginClient";
 

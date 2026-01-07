@@ -12,6 +12,13 @@ export type Task = {
   krId: string; // required
   title: string;
   done: boolean;
+
+  // ✅ NEW: notes + scheduling (optional)
+  notes?: string;
+  dueDateISO?: string; // "YYYY-MM-DD"
+  startTime?: string; // "HH:MM"
+  durationMin?: number; // e.g. 30, 45, 60
+
   createdAt: number;
   updatedAt: number;
 };
@@ -55,6 +62,8 @@ function normalizeTasks(input: unknown): Task[] {
 
       const projectId = projectIdRaw || inferProjectIdFromKr(krId);
 
+      const durationRaw = (obj as any).durationMin;
+
       return {
         id: typeof obj.id === "string" && obj.id ? obj.id : safeId("t"),
         weekStartISO: typeof obj.weekStartISO === "string" ? obj.weekStartISO : "",
@@ -62,6 +71,16 @@ function normalizeTasks(input: unknown): Task[] {
         krId,
         title: typeof obj.title === "string" ? obj.title : "",
         done: Boolean(obj.done),
+
+        // ✅ NEW (safe defaults)
+        notes: typeof (obj as any).notes === "string" ? String((obj as any).notes) : "",
+        dueDateISO: typeof (obj as any).dueDateISO === "string" ? String((obj as any).dueDateISO) : "",
+        startTime: typeof (obj as any).startTime === "string" ? String((obj as any).startTime) : "",
+        durationMin:
+          typeof durationRaw === "number" && Number.isFinite(durationRaw)
+            ? Number(durationRaw)
+            : 30,
+
         createdAt: typeof obj.createdAt === "number" ? obj.createdAt : Date.now(),
         updatedAt: typeof obj.updatedAt === "number" ? obj.updatedAt : Date.now(),
       };
@@ -86,7 +105,7 @@ export function patchTasks(recipe: (current: Task[]) => Task[]): Task[] {
   return next;
 }
 
-// ✅ opcional (vamos usar depois): hydrate do cloud se estiver mais novo
+// ✅ opcional: hydrate do cloud se estiver mais novo
 export async function hydrateTasksFromCloudIfNewer(): Promise<Task[] | null> {
   const cloud = await loadCloudKV<Task[]>(TASKS_STORAGE_KEY);
   if (!cloud) return null;

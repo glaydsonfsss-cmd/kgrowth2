@@ -1,3 +1,4 @@
+// app/_components/LayoutShell.tsx
 "use client";
 
 import Link from "next/link";
@@ -5,8 +6,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const nav = [
-  { label: "Dashboard", href: "/overview" }, // ✅ fix
+  { label: "Dashboard", href: "/" },
   { label: "Projects", href: "/projects" },
+  { label: "Weekly", href: "/weekly" },
   { label: "Tasks", href: "/tasks" },
   { label: "Habits", href: "/habits" },
   { label: "Traction Channels", href: "/traction-channels" },
@@ -25,9 +27,7 @@ function NavLinks({
     <nav className="space-y-1">
       {nav.map((item) => {
         const isActive =
-          item.href === "/overview"
-            ? pathname === "/overview" || pathname === "/" // tolera "/" antigo se existir
-            : pathname.startsWith(item.href);
+          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
         return (
           <Link
@@ -98,10 +98,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
             </div>
 
             <div className="p-3">
-              <NavLinks
-                pathname={pathname}
-                onClick={() => setMobileOpen(false)}
-              />
+              <NavLinks pathname={pathname} onClick={() => setMobileOpen(false)} />
             </div>
           </aside>
         </div>
